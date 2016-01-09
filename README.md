@@ -1,3 +1,5 @@
+[![Build Status](https://secure.travis-ci.org/robn/Atto.png)](http://travis-ci.org/robn/Atto)
+
 # NAME
 
 Atto - A tiny microservice builder

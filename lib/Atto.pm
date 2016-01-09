@@ -84,6 +84,8 @@ __END__
 
 =encoding UTF-8
 
+=for markdown [![Build Status](https://secure.travis-ci.org/robn/Atto.png)](http://travis-ci.org/robn/Atto)
+
 =head1 NAME
 
 Atto - A tiny microservice builder
