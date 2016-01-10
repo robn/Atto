@@ -33,4 +33,10 @@ my $json = JSON::MaybeXS->new->allow_nonref;
     is_deeply $json->decode($res->content), { echo => { foo => "bar" } }, "echo with JSON args returned expected response";
 }
 
+{
+    my $res = $test->request(POST "/echo", { foo => "bar" });
+    ok $res->is_success, "request to /echo succeeded";
+    is_deeply $json->decode($res->content), { echo => { foo => "bar" } }, "echo with form args returned expected response";
+}
+
 done_testing;

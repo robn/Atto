@@ -8,6 +8,7 @@ use strict;
 
 use Carp qw(croak);
 use JSON::MaybeXS ();
+use WWW::Form::UrlEncoded qw(parse_urlencoded);
 
 my %methods_for_package;
 
@@ -54,13 +55,25 @@ sub psgi {
 
         my $args = {};
         if ($len > 0) {
-            return $response->(400, "request content type must be application/json") unless (defined $env->{CONTENT_TYPE} ? $env->{CONTENT_TYPE} : '') eq 'application/json';
+            return $response->(400, "content type not provided") unless defined $env->{CONTENT_TYPE};
 
-            my $nread = $env->{'psgi.input'}->read(my $content, $len);
-            return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
+            if ($env->{CONTENT_TYPE} eq 'application/json') {
+                my $nread = $env->{'psgi.input'}->read(my $content, $len);
+                return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
 
-            $args = eval { $json->decode($content) };
-            return $response->(400, $@) if $@;
+                $args = eval { $json->decode($content) };
+                return $response->(400, $@) if $@;
+            }
+            elsif ($env->{CONTENT_TYPE} eq 'application/x-www-form-urlencoded') {
+                my $nread = $env->{'psgi.input'}->read(my $content, $len);
+                return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
+
+                %$args = parse_urlencoded($content);
+                return $response->(400, $@) if $@;
+            }
+            else {
+                return $response->(400, "unknown content type");
+            }
         }
 
         # XXX prototypes
@@ -133,11 +146,17 @@ To call your methods from the network, send a POST request with the method
 To pass arguments to the method, encode them as JSON in the request body and
 add a C<Content-type: application/json> header to the request:
 
-    $ curl -XPOST -d '"dave"' -H 'Content-type: application/json' http://localhost:5000/hello
+    $ curl -XPOST -d '{"name":"dave"}' -H 'Content-type: application/json' http://localhost:5000/hello
     "hello dave"
 
 Arguments are flattened just like in Perl, so passing a JSON array or object
 will do what you expect.
+
+Alternatively, you can pass a hash via form parameters, which is less
+expressive but easier in many scenarios:
+
+    $ curl -d 'name=dave' http://localhost:5000/hello
+    "hello dave"
 
 Methods should return a single value, which is then JSON-encoded for the
 return. This can be a simple string or number or a hash or array ref.
@@ -213,7 +232,7 @@ Robert Norris <rob@eatenbyagrue.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2015 by Robert Norris.
+This software is copyright (c) 2015-2016 by Robert Norris.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

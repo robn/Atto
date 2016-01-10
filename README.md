@@ -47,11 +47,17 @@ To call your methods from the network, send a POST request with the method
 To pass arguments to the method, encode them as JSON in the request body and
 add a `Content-type: application/json` header to the request:
 
-    $ curl -XPOST -d '"dave"' -H 'Content-type: application/json' http://localhost:5000/hello
+    $ curl -XPOST -d '{"name":"dave"}' -H 'Content-type: application/json' http://localhost:5000/hello
     "hello dave"
 
 Arguments are flattened just like in Perl, so passing a JSON array or object
 will do what you expect.
+
+Alternatively, you can pass a hash via form parameters, which is less
+expressive but easier in many scenarios:
+
+    $ curl -d 'name=dave' http://localhost:5000/hello
+    "hello dave"
 
 Methods should return a single value, which is then JSON-encoded for the
 return. This can be a simple string or number or a hash or array ref.
@@ -121,7 +127,7 @@ public review and contribution under the terms of the license.
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2015 by Robert Norris.
+This software is copyright (c) 2015-2016 by Robert Norris.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

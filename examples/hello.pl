@@ -3,7 +3,8 @@
 use Atto qw(hello);
 
 sub hello {
-    my $name = shift // "world";
+    my (%args) = @_;
+    my $name = $args{name} // "world";
     return "hello $name";
 }
 
