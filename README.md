@@ -9,7 +9,8 @@ Atto - A tiny microservice builder
     use Atto qw(hello);
     
     sub hello {
-        my $name = shift // "world";
+        my (%args) = @_;
+        my $name = $args{name} // "world";
         return "hello $name";
     }
     
@@ -57,6 +58,11 @@ Alternatively, you can pass a hash via form parameters, which is less
 expressive but easier in many scenarios:
 
     $ curl -d 'name=dave' http://localhost:5000/hello
+    "hello dave"
+
+or with a GET and query parameters:
+
+    $ curl http://localhost:5000/hello?name=dave
     "hello dave"
 
 Methods should return a single value, which is then JSON-encoded for the

@@ -9,6 +9,7 @@ use strict;
 use Carp qw(croak);
 use JSON::MaybeXS ();
 use WWW::Form::UrlEncoded qw(parse_urlencoded);
+use Plack::Request;
 
 my %methods_for_package;
 
@@ -44,37 +45,50 @@ sub psgi {
     sub {
         my ($env) = @_;
 
-        return $response->(405, "request method must be POST (not $env->{REQUEST_METHOD})") unless $env->{REQUEST_METHOD} eq 'POST';
+        return $response->(405, "request method must be POST or GET (not $env->{REQUEST_METHOD})") unless grep { $env->{REQUEST_METHOD} eq $_ } qw(POST GET);
 
-        my ($method) = $env->{REQUEST_URI} =~ m{^/([^/]+)};
+        my ($method) = $env->{REQUEST_URI} =~ m{^/([^/?]+)};
         return $response->(400, "method not found in request URL") unless defined $method;
 
         return $response->(404, "method not found") unless $methods->{$method};
 
-        my $len = 0+($env->{CONTENT_LENGTH} || 0);
-
         my $args = {};
-        if ($len > 0) {
-            return $response->(400, "content type not provided") unless defined $env->{CONTENT_TYPE};
 
-            if ($env->{CONTENT_TYPE} eq 'application/json') {
-                my $nread = $env->{'psgi.input'}->read(my $content, $len);
-                return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
+        if ($env->{REQUEST_METHOD} eq 'GET') {
+            my $req = Plack::Request->new($env);
+            %$args = $req->query_parameters->flatten;
+        }
 
-                $args = eval { $json->decode($content) };
-                return $response->(400, $@) if $@;
-            }
-            elsif ($env->{CONTENT_TYPE} eq 'application/x-www-form-urlencoded') {
-                my $nread = $env->{'psgi.input'}->read(my $content, $len);
-                return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
+        elsif ($env->{REQUEST_METHOD} eq 'POST') {
+            my $len = 0+($env->{CONTENT_LENGTH} || 0);
 
-                %$args = parse_urlencoded($content);
-                return $response->(400, $@) if $@;
-            }
-            else {
-                return $response->(400, "unknown content type");
+            if ($len > 0) {
+                return $response->(400, "content type not provided") unless defined $env->{CONTENT_TYPE};
+
+                if ($env->{CONTENT_TYPE} eq 'application/json') {
+                    my $nread = $env->{'psgi.input'}->read(my $content, $len);
+                    return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
+
+                    $args = eval { $json->decode($content) };
+                    return $response->(400, $@) if $@;
+                }
+                elsif ($env->{CONTENT_TYPE} eq 'application/x-www-form-urlencoded') {
+                    my $nread = $env->{'psgi.input'}->read(my $content, $len);
+                    return $response->(400, sprintf("expected %d bytes (from content-length), got %d", $len, $nread)) if $nread != $len;
+
+                    %$args = parse_urlencoded($content);
+                    return $response->(400, $@) if $@;
+                }
+                else {
+                    return $response->(400, "unknown content type");
+                }
             }
         }
+
+        else {
+            return $response->(405, "request method must be POST or GET (not $env->{REQUEST_METHOD})");
+        }
+
 
         # XXX prototypes
 
@@ -108,7 +122,8 @@ Atto - A tiny microservice builder
     use Atto qw(hello);
     
     sub hello {
-        my $name = shift // "world";
+        my (%args) = @_;
+        my $name = $args{name} // "world";
         return "hello $name";
     }
     
@@ -156,6 +171,11 @@ Alternatively, you can pass a hash via form parameters, which is less
 expressive but easier in many scenarios:
 
     $ curl -d 'name=dave' http://localhost:5000/hello
+    "hello dave"
+
+or with a GET and query parameters:
+
+    $ curl http://localhost:5000/hello?name=dave
     "hello dave"
 
 Methods should return a single value, which is then JSON-encoded for the
