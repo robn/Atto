@@ -29,7 +29,7 @@ sub psgi {
         $methods->{$method} = $coderef;
     }
 
-    my $json = JSON::MaybeXS->new->allow_nonref;
+    my $json = JSON::MaybeXS->new->utf8->allow_nonref;
 
     my $response = sub {
         my ($code, $raw) = @_;

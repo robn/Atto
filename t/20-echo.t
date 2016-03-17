@@ -19,7 +19,7 @@ sub echo {
 my $app = Atto->psgi;
 
 my $test = Plack::Test->create($app);
-my $json = JSON::MaybeXS->new->allow_nonref;
+my $json = JSON::MaybeXS->new->utf8->allow_nonref;
 
 {
     my $res = $test->request(POST "/echo");
